@@ -1,0 +1,401 @@
+import { S, SPEEDS, mkGrid, resetNodes, getPath, divMaze } from './utils/utils.js';
+import { astar } from './algorithms/astar.js';
+import { dijkstra } from './algorithms/dijkstra.js';
+import { bfs } from './algorithms/bfs.js';
+import { dfs } from './algorithms/dfs.js';
+
+const ALGOS = {
+  astar: {
+    key:'astar', name:'A* Search',
+    sub:'Heuristic-guided optimal search',
+    optimal:true, weighted:true,
+    time:'O(E log V)', space:'O(V)',
+    desc:'Uses Manhattan distance heuristic to guide search. Fastest optimal algorithm for grid navigation.',
+    color:'#00d4ff',
+    fn: astar,
+  },
+  dijkstra: {
+    key:'dijkstra', name:"Dijkstra's",
+    sub:'Optimal weighted graph traversal',
+    optimal:true, weighted:true,
+    time:'O((V+E) log V)', space:'O(V)',
+    desc:'Explores nodes by increasing cost. Guarantees shortest path and handles weighted edges perfectly.',
+    color:'#f59e0b',
+    fn: dijkstra,
+  },
+  bfs: {
+    key:'bfs', name:'Breadth-First Search',
+    sub:'Level-by-level unweighted search',
+    optimal:true, weighted:false,
+    time:'O(V + E)', space:'O(V)',
+    desc:'Explores all neighbors level by level. Guarantees shortest path on unweighted grids.',
+    color:'#10b981',
+    fn: bfs,
+  },
+  dfs: {
+    key:'dfs', name:'Depth-First Search',
+    sub:'Deep exploration, no path guarantee',
+    optimal:false, weighted:false,
+    time:'O(V + E)', space:'O(V)',
+    desc:'Goes as deep as possible before backtracking. Does NOT guarantee the shortest path.',
+    color:'#ef4444',
+    fn: dfs,
+  },
+};
+
+const canvas = document.getElementById('gc');
+const ctx = canvas.getContext('2d');
+
+function computeSize() {
+  const wrap = document.getElementById('gWrap');
+  const W = wrap.clientWidth - 28, H = wrap.clientHeight - 28;
+  const cs = S.cs;
+  S.cols = Math.max(5, Math.floor(W/cs)); if(S.cols%2===0) S.cols--;
+  S.rows = Math.max(5, Math.floor(H/cs)); if(S.rows%2===0) S.rows--;
+  canvas.width = S.cols*cs; canvas.height = S.rows*cs;
+}
+
+function draw() {
+  ctx.fillStyle='#080c12'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  const cs=S.cs;
+  for(let r=0;r<S.rows;r++) for(let c=0;c<S.cols;c++) {
+    drawCell(S.grid[r][c], c*cs, r*cs, cs);
+  }
+}
+
+function drawCell(n, x, y, cs) {
+  const pad=1;
+
+  if (n.isStart) {
+    ctx.fillStyle='#001a0a'; ctx.fillRect(x,y,cs,cs);
+    ctx.shadowColor='#00ff88'; ctx.shadowBlur=14;
+    ctx.fillStyle='#00ff88';
+    const s=cs*.52; ctx.fillRect(x+(cs-s)/2,y+(cs-s)/2,s,s);
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#001a0a'; ctx.font=`bold ${cs*.42}px sans-serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('▶',x+cs/2,y+cs/2);
+    return;
+  }
+
+  if (n.isEnd) {
+    ctx.fillStyle='#1a000a'; ctx.fillRect(x,y,cs,cs);
+    ctx.shadowColor='#ff4466'; ctx.shadowBlur=14;
+    ctx.fillStyle='#ff4466';
+    const s=cs*.52; ctx.fillRect(x+(cs-s)/2,y+(cs-s)/2,s,s);
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#1a000a'; ctx.font=`bold ${cs*.42}px sans-serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('⬤',x+cs/2,y+cs/2);
+    return;
+  }
+
+  if (n.wall) {
+    ctx.fillStyle='#0a1218'; ctx.fillRect(x,y,cs,cs);
+    ctx.fillStyle='#0c1820'; ctx.fillRect(x+pad,y+pad,cs-pad*2,cs-pad*2);
+    return;
+  }
+
+  if (n.path) {
+    ctx.fillStyle='#2a1e00'; ctx.fillRect(x,y,cs,cs);
+    ctx.shadowColor='#ffd700'; ctx.shadowBlur=8;
+    ctx.fillStyle='#ffd700';
+    const s=cs*.5; ctx.fillRect(x+(cs-s)/2,y+(cs-s)/2,s,s);
+    ctx.shadowBlur=0;
+    return;
+  }
+
+  if (n.vis) {
+    ctx.fillStyle='#0a3a5c'; ctx.fillRect(x,y,cs,cs);
+    ctx.fillStyle='#0d4570'; ctx.fillRect(x+pad,y+pad,cs-pad*2,cs-pad*2);
+    return;
+  }
+
+  if (n.w>1) {
+    ctx.fillStyle='#0d1520'; ctx.fillRect(x,y,cs,cs);
+    ctx.fillStyle='#1a3a6a'; ctx.fillRect(x+pad,y+pad,cs-pad*2,cs-pad*2);
+    ctx.fillStyle='#2a5a9a'; ctx.font=`${cs*.35}px sans-serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('W',x+cs/2,y+cs/2);
+    return;
+  }
+
+  ctx.fillStyle='#080c12'; ctx.fillRect(x,y,cs,cs);
+  ctx.fillStyle='#0d1520'; ctx.fillRect(x+pad,y+pad,cs-pad*2,cs-pad*2);
+}
+
+function redraw(r,c) {
+  const n=S.grid[r][c];
+  drawCell(n, c*S.cs, r*S.cs, S.cs);
+}
+
+function buildAlgoList() {
+  const el = document.getElementById('algoList');
+  el.innerHTML='';
+  Object.values(ALGOS).forEach(a=>{
+    const d=document.createElement('div');
+    d.className='algo-card'; d.id=`ac-${a.key}`;
+    d.style.setProperty('--c',a.color);
+    d.innerHTML=`
+      <div class="algo-card-hdr">
+        <span class="algo-name">${a.name}</span>
+        <span class="badge ${a.optimal?'b-ok':'b-no'}">${a.optimal?'Optimal':'Sub-opt'}</span>
+      </div>
+      <div class="algo-sub">${a.sub}</div>`;
+    d.onclick=()=>selectAlgo(a.key);
+    el.appendChild(d);
+  });
+}
+
+function selectAlgo(key) {
+  S.algo=key;
+  document.querySelectorAll('.algo-card').forEach(c=>c.classList.remove('active'));
+  document.getElementById(`ac-${key}`).classList.add('active');
+  const a=ALGOS[key];
+  document.getElementById('ibName').textContent=a.name;
+  document.getElementById('ibName').style.color=a.color;
+  document.getElementById('ibTime').textContent=a.time;
+  document.getElementById('ibSpace').textContent=a.space;
+  const opt=document.getElementById('ibOpt');
+  opt.textContent=a.optimal?'✓ Optimal':'✗ Not Optimal';
+  opt.style.color=a.optimal?'#10b981':'#ef4444';
+  document.getElementById('ibDesc').textContent=a.desc;
+}
+
+function handleRun() {
+  if (S.running) { stopAnim(); return; }
+  clearPath(false);
+  resetNodes();
+
+  S.running=true;
+  setStatus('running','Running '+ALGOS[S.algo].name+'…');
+  const btn=document.getElementById('btnRun');
+  btn.textContent='⏹  Stop'; btn.classList.add('stop');
+
+  const start=S.grid[S.sr][S.sc], end=S.grid[S.er][S.ec];
+
+  const t0=performance.now();
+  const visited=ALGOS[S.algo].fn(S.grid,start,end);
+  const dt=performance.now()-t0;
+
+  const path=getPath(end);
+  const found=path[path.length-1]===end;
+
+  updateStats(visited.length, found?path.length:0, dt);
+
+  animVisited(visited, ()=>{
+    if(!S.running) return;
+    if(found) {
+      animPath(path, ()=>{
+        setStatus('done',`Path found — ${path.length} nodes · ${visited.length} visited · ${dt.toFixed(1)}ms`);
+        showToast('✓ Path found in '+path.length+' steps','ok');
+        finishRun();
+      });
+    } else {
+      setStatus('done','No path exists between start and end.');
+      showToast('✗ No path found','err');
+      finishRun();
+    }
+  });
+}
+
+function finishRun() {
+  S.running=false;
+  const btn=document.getElementById('btnRun');
+  btn.textContent='▶ \u00A0Visualize'; btn.classList.remove('stop');
+}
+
+function stopAnim() {
+  S.aids.forEach(id=>clearTimeout(id)); S.aids=[];
+  S.running=false;
+  const btn=document.getElementById('btnRun');
+  btn.textContent='▶ \u00A0Visualize'; btn.classList.remove('stop');
+  setStatus('ready','Stopped. Clear path and try again.');
+}
+
+function animVisited(nodes, cb) {
+  const delay=SPEEDS[S.speed-1];
+  nodes.forEach((n,i)=>{
+    const id=setTimeout(()=>{
+      if(!n.isStart&&!n.isEnd){ n.vis=true; redraw(n.r,n.c); }
+      document.getElementById('stV').textContent=i+1;
+      if(i===nodes.length-1) cb();
+    },i*delay);
+    S.aids.push(id);
+  });
+  if(!nodes.length) cb();
+}
+
+function animPath(path, cb) {
+  path.forEach((n,i)=>{
+    const id=setTimeout(()=>{
+      if(!n.isStart&&!n.isEnd){ n.path=true; n.vis=false; redraw(n.r,n.c); }
+      document.getElementById('stP').textContent=i+1;
+      if(i===path.length-1) cb();
+    },i*22);
+    S.aids.push(id);
+  });
+}
+
+function clearPath(redrawAll=true) {
+  S.grid.forEach(row=>row.forEach(n=>{
+    n.vis=false; n.path=false;
+    n.dist=Infinity; n.f=Infinity; n.prev=null;
+  }));
+  updateStats(0,0,0);
+  if(redrawAll) draw();
+  setStatus('ready','Path cleared. Ready to run.');
+}
+
+function clearAll() {
+  S.aids.forEach(id=>clearTimeout(id)); S.aids=[];
+  S.running=false;
+  const btn=document.getElementById('btnRun');
+  btn.textContent='▶ \u00A0Visualize'; btn.classList.remove('stop');
+  mkGrid(); updateStats(0,0,0); draw();
+  setStatus('ready','Grid cleared. Ready.');
+}
+
+function makeMaze() {
+  clearAll();
+  const walls=[];
+  divMaze(1,1,S.rows-2,S.cols-2,walls);
+  walls.forEach(([r,c])=>{
+    if(r>=0&&r<S.rows&&c>=0&&c<S.cols){
+      const n=S.grid[r][c];
+      if(!n.isStart&&!n.isEnd) n.wall=true;
+    }
+  });
+  draw();
+  showToast('⊞ Recursive maze generated','inf');
+}
+
+function randWalls() {
+  clearAll();
+  S.grid.forEach(row=>row.forEach(n=>{
+    if(!n.isStart&&!n.isEnd&&Math.random()<0.3) n.wall=true;
+  }));
+  draw();
+  showToast('⊠ Random walls placed','inf');
+}
+
+function setMode(m) {
+  S.mode=m;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(m==='wall'?'mWall':'mWeight').classList.add('active');
+}
+
+function setSpeed(v) {
+  S.speed=parseInt(v);
+  const labels=['Slow','Normal-slow','Normal','Fast','Instant'];
+  document.getElementById('spLbl').textContent=labels[S.speed-1];
+}
+
+function getCell(e) {
+  const rect=canvas.getBoundingClientRect();
+  const x=e.clientX-rect.left, y=e.clientY-rect.top;
+  const c=Math.floor(x/S.cs), r=Math.floor(y/S.cs);
+  if(r<0||r>=S.rows||c<0||c>=S.cols) return null;
+  return {r,c};
+}
+
+function toggle(r,c){
+  const n=S.grid[r][c];
+  if(n.isStart||n.isEnd) return;
+  if(S.mode==='wall'){
+    n.wall=!n.wall; n.w=1;
+  } else {
+    if(!n.wall) n.w=n.w>1?1:3;
+  }
+  redraw(r,c);
+}
+
+function updateStats(v,p,t) {
+  document.getElementById('stV').textContent=v;
+  document.getElementById('stP').textContent=p||'—';
+  document.getElementById('stT').textContent=t?t.toFixed(1)+'ms':'0ms';
+  document.getElementById('stE').textContent=v&&p?((p/v)*100).toFixed(0)+'%':'—';
+}
+
+function setStatus(type,msg){
+  document.getElementById('sDot').className='sd '+type;
+  document.getElementById('sMsg').textContent=msg;
+}
+
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+function init() {
+  computeSize();
+  S.sr=Math.floor(S.rows/2); S.sc=Math.floor(S.cols*.15);
+  S.er=Math.floor(S.rows/2); S.ec=Math.floor(S.cols*.85);
+  mkGrid();
+  document.getElementById('iR').textContent=S.rows;
+  document.getElementById('iC').textContent=S.cols;
+  document.getElementById('iN').textContent=S.rows*S.cols;
+  draw();
+  buildAlgoList();
+  selectAlgo('astar');
+}
+
+// Event Listeners
+canvas.addEventListener('mousedown',e=>{
+  if(S.running) return;
+  S.mdown=true;
+  const cell=getCell(e); if(!cell) return;
+  const n=S.grid[cell.r][cell.c];
+  if(n.isStart){S.drag='start';return;}
+  if(n.isEnd){S.drag='end';return;}
+  toggle(cell.r,cell.c);
+});
+
+canvas.addEventListener('mousemove',e=>{
+  if(!S.mdown||S.running) return;
+  const cell=getCell(e); if(!cell) return;
+
+  if(S.drag==='start'){
+    const n=S.grid[cell.r][cell.c];
+    if(n.isEnd||n.wall) return;
+    const pr=S.sr,pc=S.sc;
+    S.sr=cell.r; S.sc=cell.c;
+    redraw(pr,pc); redraw(cell.r,cell.c);
+    return;
+  }
+  if(S.drag==='end'){
+    const n=S.grid[cell.r][cell.c];
+    if(n.isStart||n.wall) return;
+    const pr=S.er,pc=S.ec;
+    S.er=cell.r; S.ec=cell.c;
+    redraw(pr,pc); redraw(cell.r,cell.c);
+    return;
+  }
+  toggle(cell.r,cell.c);
+});
+
+canvas.addEventListener('mouseup',()=>{S.mdown=false;S.drag=null;});
+canvas.addEventListener('mouseleave',()=>{S.mdown=false;S.drag=null;});
+
+window.addEventListener('resize',()=>{
+  computeSize();
+  S.sr=Math.floor(S.rows/2); S.sc=Math.floor(S.cols*.15);
+  S.er=Math.floor(S.rows/2); S.ec=Math.floor(S.cols*.85);
+  mkGrid();
+  document.getElementById('iR').textContent=S.rows;
+  document.getElementById('iC').textContent=S.cols;
+  document.getElementById('iN').textContent=S.rows*S.cols;
+  draw();
+});
+
+// Expose globals for HTML onclick handlers
+window.handleRun = handleRun;
+window.clearPath = () => clearPath(true);
+window.clearAll = clearAll;
+window.makeMaze = makeMaze;
+window.randWalls = randWalls;
+window.setMode = setMode;
+window.setSpeed = setSpeed;
+
+init();
