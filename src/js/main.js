@@ -160,6 +160,17 @@ function selectAlgo(key) {
   opt.textContent=a.optimal?'✓ Optimal':'✗ Not Optimal';
   opt.style.color=a.optimal?'#10b981':'#ef4444';
   document.getElementById('ibDesc').textContent=a.desc;
+  
+  // Update global accent color to match algorithm
+  document.documentElement.style.setProperty('--accent', a.color);
+  // Optional: update glow based on color
+  const rgb = hexToRgb(a.color);
+  if(rgb) document.documentElement.style.setProperty('--accent-dim', `rgba(${rgb.r},${rgb.g},${rgb.b},0.12)`);
+}
+
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
 }
 
 function handleRun() {
@@ -339,6 +350,13 @@ function init() {
   draw();
   buildAlgoList();
   selectAlgo('astar');
+
+  // Tutorial logic
+  if (localStorage.getItem('tutSeen') !== 'true') {
+    setTimeout(() => {
+      document.getElementById('tutModal').classList.add('show');
+    }, 500);
+  }
 }
 
 // Event Listeners
@@ -397,5 +415,11 @@ window.makeMaze = makeMaze;
 window.randWalls = randWalls;
 window.setMode = setMode;
 window.setSpeed = setSpeed;
+window.closeTutorial = () => {
+  document.getElementById('tutModal').classList.remove('show');
+  localStorage.setItem('tutSeen', 'true');
+};
+window.openGuide = () => document.getElementById('guideModal').classList.add('show');
+window.closeGuide = () => document.getElementById('guideModal').classList.remove('show');
 
 init();

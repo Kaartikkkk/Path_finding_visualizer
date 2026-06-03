@@ -16,7 +16,10 @@
     <span class="logo-text">Path<span>Finder</span></span>
     <span class="header-badge">DSA VISUALIZER</span>
   </div>
-  <a class="gh-link" href="https://github.com/Kaartikkkk" target="_blank">⬡ github.com/Kaartikkkk</a>
+  <div style="display:flex; gap: 12px; align-items: center;">
+    <button class="btn-guide" onclick="openGuide()">📖 User Guide</button>
+    <a class="gh-link" href="https://github.com/Kaartikkkk" target="_blank">⬡ github.com/Kaartikkkk</a>
+  </div>
 </header>
 
 <div class="app">
@@ -28,16 +31,14 @@
     </div>
 
     <div class="s-section">
-      <div class="s-label">Controls</div>
-      <button class="btn-run" id="btnRun" onclick="handleRun()">▶ &nbsp;Visualize</button>
-      <div class="btn-row">
-        <button class="btn-sm" onclick="clearPath()">↺ Clear Path</button>
-        <button class="btn-sm" onclick="clearAll()">⊗ Clear All</button>
+      <div class="s-label">Draw Mode</div>
+      <div class="mode-grid">
+        <button class="mode-btn active" id="mWall" onclick="setMode('wall')" title="Draw impenetrable walls">🧱 Wall</button>
+        <button class="mode-btn" id="mWeight" onclick="setMode('weight')" title="Draw weights (Cost: 3)">⚖ Weight</button>
       </div>
-      <div class="btn-row">
-        <button class="btn-sm" onclick="makeMaze()">⊞ Maze</button>
-        <button class="btn-sm" onclick="randWalls()">⊠ Random</button>
-      </div>
+      <p style="margin-top:8px;font-size:9px;color:var(--text-dim);line-height:1.5">
+        Click/drag to draw. Drag 🟢 or 🔴 to move nodes.
+      </p>
     </div>
 
     <div class="s-section">
@@ -49,14 +50,16 @@
     </div>
 
     <div class="s-section">
-      <div class="s-label">Draw Mode</div>
-      <div class="mode-grid">
-        <button class="mode-btn active" id="mWall" onclick="setMode('wall')">🧱 Wall</button>
-        <button class="mode-btn" id="mWeight" onclick="setMode('weight')">⚖ Weight</button>
+      <div class="s-label">Controls</div>
+      <button class="btn-run" id="btnRun" onclick="handleRun()">▶ &nbsp;Visualize</button>
+      <div class="btn-row">
+        <button class="btn-sm" onclick="clearPath()" title="Remove the path but keep walls">↺ Clear Path</button>
+        <button class="btn-sm" onclick="clearAll()" title="Reset the entire grid">⊗ Clear All</button>
       </div>
-      <p style="margin-top:8px;font-size:9px;color:var(--text-dim);line-height:1.5">
-        Click/drag to draw. Drag 🟢 or 🔴 to move nodes.
-      </p>
+      <div class="btn-row">
+        <button class="btn-sm" onclick="makeMaze()" title="Generate a random maze">⊞ Maze</button>
+        <button class="btn-sm" onclick="randWalls()" title="Sprinkle random walls">⊠ Random</button>
+      </div>
     </div>
 
     <div class="s-section">
@@ -69,7 +72,7 @@
       </div>
     </div>
 
-    <div class="s-section">
+    <div class="s-section" style="border-bottom:none">
       <div class="s-label">Legend</div>
       <div class="leg-list">
         <div class="leg-item"><div class="leg-dot" style="background:#00ff88;box-shadow:0 0 5px #00ff88"></div>Start Node</div>
@@ -109,6 +112,80 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Tutorial Modal -->
+<div class="tutorial-overlay" id="tutModal">
+  <div class="tutorial-card">
+    <div class="tut-header">
+      <h2>Welcome to <span style="color:var(--accent)">PathFinder!</span></h2>
+      <button class="tut-close" onclick="closeTutorial()">×</button>
+    </div>
+    <p class="tut-desc">Let's take a quick tour so you know how everything works.</p>
+    
+    <div class="tut-steps">
+      <div class="tut-step">
+        <div class="ts-icon">1</div>
+        <div class="ts-content">
+          <strong>Choose an Algorithm</strong>
+          <p>Pick from A*, Dijkstra, BFS, or DFS from the sidebar.</p>
+        </div>
+      </div>
+      <div class="tut-step">
+        <div class="ts-icon">2</div>
+        <div class="ts-content">
+          <strong>Draw the Environment</strong>
+          <p>Click and drag on the grid to place walls, or move the green and red nodes.</p>
+        </div>
+      </div>
+      <div class="tut-step">
+        <div class="ts-icon">3</div>
+        <div class="ts-content">
+          <strong>Visualize!</strong>
+          <p>Hit the visualize button and watch the algorithm find the shortest path!</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tut-actions">
+      <button class="btn-tut-go" onclick="closeTutorial()">Let's Go!</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detailed Guide Modal -->
+<div class="tutorial-overlay" id="guideModal">
+  <div class="tutorial-card" style="max-width: 600px; max-height: 85vh; display: flex; flex-direction: column;">
+    <div class="tut-header">
+      <h2>How it <span style="color:var(--accent)">Works</span></h2>
+      <button class="tut-close" onclick="closeGuide()">×</button>
+    </div>
+    
+    <div class="guide-content">
+      <h3>Step 1: Understand the Grid</h3>
+      <p>The grid represents a map. The <strong>Green Node (▶)</strong> is where the search begins, and the <strong>Red Node (⬤)</strong> is the target. Empty cells are standard paths.</p>
+
+      <h3>Step 2: Choose an Algorithm</h3>
+      <p>Select an algorithm from the sidebar. 
+      <br/>• <strong>A* Search:</strong> Smart and fast. Uses distance guessing (heuristic).
+      <br/>• <strong>Dijkstra's:</strong> Explores uniformly in all directions. Respects weights.
+      <br/>• <strong>BFS:</strong> Explores level-by-level. Good for unweighted grids.
+      <br/>• <strong>DFS:</strong> Blindly goes deep into one path before turning around.</p>
+
+      <h3>Step 3: Draw Your Environment</h3>
+      <p>Use the Draw Mode to place obstacles.
+      <br/>• <strong>Walls (🧱):</strong> Impenetrable blocks. Algorithms must path around them.
+      <br/>• <strong>Weights (⚖):</strong> Difficult terrain (costs 3x more to cross). Only A* and Dijkstra consider weights.
+      <br/>• <strong>Drag Nodes:</strong> Click and drag the Start or End nodes to move them.</p>
+
+      <h3>Step 4: Visualize!</h3>
+      <p>Click <strong>▶ Visualize</strong>. First, you'll see the <strong>Exploration Phase (Blue)</strong> where the algorithm searches the grid. Once found, it highlights the <strong>Shortest Path (Yellow)</strong>.</p>
+    </div>
+
+    <div class="tut-actions" style="margin-top: 20px;">
+      <button class="btn-tut-go" onclick="closeGuide()">Got it!</button>
+    </div>
+  </div>
+</div>
 
 <script type="module" src="src/js/main.js"></script>
 </body>
