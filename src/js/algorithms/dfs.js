@@ -2,13 +2,22 @@ import { nbrs } from '../utils/utils.js';
 
 export function dfs(grid, start, end) {
   const visited = [];
-  const stack = [start]; start.vis = true;
+  const stack = [start];
+  const closed = new Set();
+  
   while (stack.length) {
     const cur = stack.pop();
-    if (cur === end) return visited;
+    if (closed.has(cur) || cur.wall) continue;
+    
+    closed.add(cur);
     visited.push(cur);
+    if (cur === end) return visited;
+    
     for (const nb of nbrs(cur, grid)) {
-      if (!nb.vis && !nb.wall) { nb.vis = true; nb.prev = cur; stack.push(nb); }
+      if (!closed.has(nb) && !nb.wall) {
+        nb.prev = cur;
+        stack.push(nb);
+      }
     }
   }
   return visited;

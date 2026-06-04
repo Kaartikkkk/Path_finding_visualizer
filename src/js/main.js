@@ -67,61 +67,62 @@ function drawCell(n, x, y, cs) {
   const pad=1;
 
   if (n.isStart) {
-    ctx.fillStyle='#001a0a'; ctx.fillRect(x,y,cs,cs);
-    ctx.shadowColor='#00ff88'; ctx.shadowBlur=14;
-    ctx.fillStyle='#00ff88';
-    const s=cs*.52; ctx.fillRect(x+(cs-s)/2,y+(cs-s)/2,s,s);
+    ctx.fillStyle='#064e3b'; ctx.fillRect(x,y,cs,cs);
+    ctx.shadowColor='#10b981'; ctx.shadowBlur=10;
+    ctx.fillStyle='#10b981';
+    const s=cs*.6; ctx.fillRect(x+(cs-s)/2,y+(cs-s)/2,s,s);
     ctx.shadowBlur=0;
-    ctx.fillStyle='#001a0a'; ctx.font=`bold ${cs*.42}px sans-serif`;
+    ctx.fillStyle='#ffffff'; ctx.font=`bold ${cs*.42}px sans-serif`;
     ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.fillText('▶',x+cs/2,y+cs/2);
     return;
   }
 
   if (n.isEnd) {
-    ctx.fillStyle='#1a000a'; ctx.fillRect(x,y,cs,cs);
-    ctx.shadowColor='#ff4466'; ctx.shadowBlur=14;
-    ctx.fillStyle='#ff4466';
-    const s=cs*.52; ctx.fillRect(x+(cs-s)/2,y+(cs-s)/2,s,s);
+    ctx.fillStyle='#7f1d1d'; ctx.fillRect(x,y,cs,cs);
+    ctx.shadowColor='#ef4444'; ctx.shadowBlur=10;
+    ctx.fillStyle='#ef4444';
+    const s=cs*.6; ctx.fillRect(x+(cs-s)/2,y+(cs-s)/2,s,s);
     ctx.shadowBlur=0;
-    ctx.fillStyle='#1a000a'; ctx.font=`bold ${cs*.42}px sans-serif`;
+    ctx.fillStyle='#ffffff'; ctx.font=`bold ${cs*.42}px sans-serif`;
     ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.fillText('⬤',x+cs/2,y+cs/2);
     return;
   }
 
   if (n.wall) {
-    ctx.fillStyle='#0a1218'; ctx.fillRect(x,y,cs,cs);
-    ctx.fillStyle='#0c1820'; ctx.fillRect(x+pad,y+pad,cs-pad*2,cs-pad*2);
+    ctx.fillStyle='#475569'; ctx.fillRect(x,y,cs,cs);
+    ctx.fillStyle='#cbd5e1'; ctx.fillRect(x+pad,y+pad,cs-pad*2,cs-pad*2);
     return;
   }
 
   if (n.path) {
-    ctx.fillStyle='#2a1e00'; ctx.fillRect(x,y,cs,cs);
-    ctx.shadowColor='#ffd700'; ctx.shadowBlur=8;
-    ctx.fillStyle='#ffd700';
-    const s=cs*.5; ctx.fillRect(x+(cs-s)/2,y+(cs-s)/2,s,s);
+    ctx.fillStyle='#ca8a04'; ctx.fillRect(x,y,cs,cs);
+    ctx.shadowColor='#fef08a'; ctx.shadowBlur=8;
+    ctx.fillStyle='#fef08a';
+    const s=cs*.6; ctx.fillRect(x+(cs-s)/2,y+(cs-s)/2,s,s);
     ctx.shadowBlur=0;
     return;
   }
 
   if (n.vis) {
-    ctx.fillStyle='#0a3a5c'; ctx.fillRect(x,y,cs,cs);
-    ctx.fillStyle='#0d4570'; ctx.fillRect(x+pad,y+pad,cs-pad*2,cs-pad*2);
+    ctx.fillStyle='#1d4ed8'; ctx.fillRect(x,y,cs,cs);
+    ctx.fillStyle='#3b82f6'; ctx.fillRect(x+pad,y+pad,cs-pad*2,cs-pad*2);
     return;
   }
 
   if (n.w>1) {
-    ctx.fillStyle='#0d1520'; ctx.fillRect(x,y,cs,cs);
-    ctx.fillStyle='#1a3a6a'; ctx.fillRect(x+pad,y+pad,cs-pad*2,cs-pad*2);
-    ctx.fillStyle='#2a5a9a'; ctx.font=`${cs*.35}px sans-serif`;
+    ctx.fillStyle='#9a3412'; ctx.fillRect(x,y,cs,cs);
+    ctx.fillStyle='#f97316'; ctx.fillRect(x+pad,y+pad,cs-pad*2,cs-pad*2);
+    ctx.fillStyle='#ffffff'; ctx.font=`bold ${cs*.45}px sans-serif`;
     ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.fillText('W',x+cs/2,y+cs/2);
     return;
   }
 
-  ctx.fillStyle='#080c12'; ctx.fillRect(x,y,cs,cs);
-  ctx.fillStyle='#0d1520'; ctx.fillRect(x+pad,y+pad,cs-pad*2,cs-pad*2);
+  // Empty cells - made brighter so the grid is visible
+  ctx.fillStyle='#1e293b'; ctx.fillRect(x,y,cs,cs);
+  ctx.fillStyle='#0f172a'; ctx.fillRect(x+pad,y+pad,cs-pad*2,cs-pad*2);
 }
 
 function redraw(r,c) {
@@ -190,7 +191,7 @@ function handleRun() {
   const dt=performance.now()-t0;
 
   const path=getPath(end);
-  const found=path[path.length-1]===end;
+  const found=path.length > 1 && path[0] === start;
 
   updateStats(visited.length, found?path.length:0, dt);
 
@@ -421,5 +422,37 @@ window.closeTutorial = () => {
 };
 window.openGuide = () => document.getElementById('guideModal').classList.add('show');
 window.closeGuide = () => document.getElementById('guideModal').classList.remove('show');
+window.openContact = () => document.getElementById('contactModal').classList.add('show');
+window.closeContact = () => document.getElementById('contactModal').classList.remove('show');
+
+document.getElementById('contactForm')?.addEventListener('submit', function(event) {
+  event.preventDefault();
+  const btn = document.querySelector('.btn-contact-submit');
+  btn.textContent = 'Sending...';
+  btn.disabled = true;
+
+  const serviceID = 'YOUR_SERVICE_ID'; // Replace with EmailJS Service ID
+  const templateID = 'YOUR_TEMPLATE_ID'; // Replace with EmailJS Template ID
+
+  const templateParams = {
+    from_name: document.getElementById('senderName').value,
+    from_email: document.getElementById('senderEmail').value,
+    message: document.getElementById('senderMessage').value
+  };
+
+  emailjs.send(serviceID, templateID, templateParams)
+    .then(() => {
+      btn.textContent = 'Send Message';
+      btn.disabled = false;
+      document.getElementById('contactForm').reset();
+      window.closeContact();
+      showToast('✓ Message sent successfully!', 'ok');
+    }, (err) => {
+      btn.textContent = 'Send Message';
+      btn.disabled = false;
+      showToast('✗ Failed to send message.', 'err');
+      console.error('EmailJS Error:', err);
+    });
+});
 
 init();

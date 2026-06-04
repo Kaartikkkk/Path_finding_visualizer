@@ -3,16 +3,26 @@ import { nbrs } from '../utils/utils.js';
 export function dijkstra(grid, start, end) {
   const visited = [];
   start.dist = 0;
-  const all = grid.flat();
-  while (all.filter(n=>!n.vis).length) {
-    const unvis = all.filter(n=>!n.vis).sort((a,b)=>a.dist-b.dist);
-    const cur = unvis[0];
-    if (!cur || cur.wall || cur.dist===Infinity) return visited;
-    cur.vis = true; visited.push(cur);
+  const open = [start];
+  const closed = new Set();
+  
+  while (open.length) {
+    open.sort((a,b) => a.dist - b.dist);
+    const cur = open.shift();
+    if (closed.has(cur) || cur.wall) continue;
+    
+    closed.add(cur); 
+    visited.push(cur);
     if (cur === end) return visited;
+    
     for (const nb of nbrs(cur, grid)) {
+      if (closed.has(nb) || nb.wall) continue;
       const d = cur.dist + nb.w;
-      if (d < nb.dist) { nb.dist = d; nb.prev = cur; }
+      if (!open.includes(nb)) open.push(nb);
+      else if (d >= nb.dist) continue;
+      
+      nb.prev = cur; 
+      nb.dist = d;
     }
   }
   return visited;
